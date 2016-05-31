@@ -7,7 +7,7 @@ library(ggplot2)
 library(lubridate)
 library(scales)
 
-url <- "" # deleted url to SurveyGizmo CSV export prior to committing - request from jgaunt / S&I team if you want to run this script on your own
+url <- "" # request SurveyGizmo URL string from jgaunt@mozilla.com - not fit to share publically on GitHub
 
 df <- read_csv(url)
 
