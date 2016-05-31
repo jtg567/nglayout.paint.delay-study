@@ -1,0 +1,177 @@
+---
+title: "User Perception of nglayout.initialpaint.delay (SHIELD Study)"
+author: "Mozilla Strategy & Insights"
+date: "May 24, 2016"
+output: 
+  html_document: 
+    css: custom.css
+    toc: yes
+---
+
+```{r, include= FALSE}
+# import and preprocess data (script will run if nested in current working directory)
+source(file.path(getwd(), "Scripts/Preprocessing.R"))
+```
+
+## Overview
+The first SHIELD study manipulated screen painting delays (`nglayout.initialpaint.delay`) to determine if users noticed any perceived enhancement in browser performance. There's evidence at the 90% confidence level that decreasing the default value in Release will increase user satisfaction with Firefox.
+
+## Key Findings
+
+1. Users with the shortest delay more positively rated **startup time**
+1. Users with the shortest delay more positively rated **experiences opening a new tab**
+
+## Recommendation
+
+1. Set `nglayout.initialpaint.delay` to 5 ms in Release (unless inhibited by unforseen technical reasons, or further research indicates a more optimal value)
+1. Deploy funnelcake build with this setting to verify the efficacy of the change and/or use Go Faster to rapidly validate this change at scale
+
+## Study Design
+
+This introductory SHIELD deployed study recruited mostly (but not exclusively) Release users via Heartbeat. After rating Firefox, users were linked to a launch/consent page where they elected (opt-in) to install an add-on that: 
+
+1. Manipulated about:config preference `nglayout.initialpaint.delay` - a value set in milliseconds (ms) that tells Firefox (FF) how long to wait after receiving an initial HTTP request from a server to begin rendering the layout 
+1. Expired after the study’s duration had concluded (seven days after installation)
+
+Users who opted-in were blindly and randomly assigned to one of four experimental conditions:
+
+1. Aggressive (fastest at 5 ms)
+1. Medium (50 ms)
+1. Control (250 ms is the default value)
+1. Weak (1000 ms, more delay than the current value)
+
+## Response Summaries
+
+```{r, include= FALSE, R.options=(digits = 1)}
+# set parameterized global variables
+gCI = 0.95
+# how many users completed the study (depends on default SG variable name)
+N.total <- nrow(df)
+N.in  <- 100*nrow(df[df$`URL Variable: reason`== 'end-of-study',])/N.total
+N.out <- 100*nrow(df[df$`URL Variable: reason`== 'user-ended-study',])/N.total
+```
+
+`r N.total` users completed the study. `r N.in`% of users ran the study to conclusion, whereas `r N.out`% ended the study themselves. First we looked at the general direction of sentiment with questions rating whether particular aspects of users' experience with Firefox got better, worse, or stayed the same.
+
+### Startup Times
+#### **Hypothesis:** Users detect quicker startup times when they first open Firefox.
+#### **Conclusion:** Hypothesis SUPPORTED.
+#### **Analysis Walkthrough**
+
+Users were asked the following question:
+
+> Thinking back over the last week of using Firefox, please tell us about your experience with startup time
+
+Response options included the following:
+
+1. Got worse
+2. Stayed the same
+3. Got better
+4. I don't know/Unsure
+
+```{r}
+# get sd of proportions of responses to each
+get_results = function(df, response) {
+  data = ddply(df, .(treatment), function(x) {
+    props = prop.table(table(x[,response]))
+    n = length(x$treatment)
+    se = apply(props, 1, function(p) {sqrt(p*(1-p)/n)} )
+    CI = qnorm(gCI)*se
+    names(se) = names(props)
+    return(data.frame(props, n, se, CI))})
+  return(data)
+}
+
+# editing facet labels (from http://stackoverflow.com/questions/3472980/ggplot-how-to-change-facet-labels)
+response_labeller <- function(variable,value){
+  return(list('-1'="Is Worse", '0'="Is Same", '1'="Is Better")[value])
+}
+# returns ggplot of bars for these questions
+plot_results = function(results, title) {
+  ggplot(results, aes(x=treatment, y=Freq)) +
+    geom_bar(stat='identity') + 
+    geom_errorbar(aes(ymax=Freq+CI, ymin=Freq-CI)) +
+    facet_wrap(~Var1, ncol=1, labeller=response_labeller) +
+    scale_x_discrete(limits=c('Aggressive (5)','Medium (50)','Control (250)','Weak (1000)')) +
+    scale_y_continuous(limits=c(0, 1)) +
+    coord_flip() +
+    theme_bw() +
+    ggtitle(title) +
+    xlab("Treatment Group") +
+    ylab("Frequency of Response (0-100%)")
+}
+```
+
+```{r}
+result <- get_results(df, 'exp_startuptime')
+plot_results(result, 'Experience with Startup Time')
+```
+
+When asked about Firefox’s startup time, those respondents in the aggressive treatment group were more likely to report improvements than the other groups. Conversely, those in the weak treatment group were more likely than other groups to indicate their experience had gotten worse. Also, relative to less interesting analyses excluded from this report (e.g. experiences with crashiness), this plot shows clearly how all groups across the board report a better experience than worse. This latter point could suggest that merely telling people we are trying to affect the performance of the browser has a positive effect on perception of browser speed.  
+
+### New Tab Speeds
+#### **Hypothesis:** Users detect faster performance when adding new tabs in Firefox
+#### **Conclusion:** Hypothesis SUPPORTED.
+#### **Analysis Walkthrough**
+
+Users were asked the following question:
+
+> Thinking back over the last week of using Firefox, please tell us about your experience with new tab speed
+
+Again, response options included the following:
+
+1. Got worse
+2. Stayed the same
+3. Got better
+4. I don't know/Unsure
+
+```{r}
+result <- get_results(df, 'exp_newtabspeed')
+plot_results(result, 'Experience with New Tab Speed')
+```
+
+The clearest difference, statistically, is that between the attitudes about new tab speed from aggressive and weak groups - those in the former group are more likely than the others to report new tab speed is better than before using the add-on, those in the latter are more likely to say it has gotten worse.
+
+### Overall Browser Speed
+#### **Hypothesis:** Users notice the enhancement of performance that accompanies faster screen painting.
+#### **Conclusion:** Hypothesis SUPPORTED.
+#### **Analysis Walkthrough**
+Users were asked the following question:
+
+> Thinking back over the last week of testing, how fast would you rate Firefox on the scale below?
+
+Responses were submitted by dropping a slider control on a scale somewhere between 0 and 100 points.
+
+```{r}
+# Graph of group mean differences
+result <- Rmisc::summarySE(data= df, 
+                           measurevar= 'lastweek_speed_rating', 
+                           groupvars= c('treatment'), 
+                           na.rm= TRUE,
+                           conf.interval = gCI)
+
+ggplot(result, aes(x=treatment, y=lastweek_speed_rating)) + 
+  geom_pointrange(aes(ymin=lastweek_speed_rating-ci, 
+                      ymax=lastweek_speed_rating+ci)) +
+  xlab('Treatment Group') +
+  scale_x_discrete(limits=c('Aggressive (5)','Medium (50)','Control (250)','Weak (1000)')) +
+  ylab('Reported "fastness" of browser on 100pt scale (higher is better)') +
+  scale_y_continuous(limits = c(50, 80)) +
+  theme_bw() +
+  coord_flip()
+```
+
+From a glance, despite some overlapping variances, the group mean of those who received the aggressive treatment subjectively rated the browser as faster (about a 5% difference). Unlike the sentiment questions above, which gauged the general sentiment toward changes, this question probes the magnitude of that change. The aggressive group mean lies outside error bars for both the medium and weak groups, indicating at a 90% confidence level that these means are different.
+
+# Appendices
+
+### Sample Sizes and Dates of Survey Deployment 
+```{r, echo= FALSE}
+table(df$treatment)
+```
+
+```{r}
+qplot(data=df, x=as.Date(day), geom="density", facets=~treatment) + theme_bw() + scale_x_date(date_breaks='1 day', date_labels='%b %d') + coord_flip()
+```
+
+The survey was opened for reponses twice. The first between April 4 and 16, 2016 and the second from April 29 through May 4, 2016. Initial findings were positive and the second iteration was an attempted replication, minus the weak treatment group that seemed to not add any relevant information (and moreover was degrading the FF UX for everyone in that group). The pattern of difference was not as strong during the second iteration, somewhat softening but not negating the results from the first run. Although we're enthusiastic about this gentle evidence towards our suggested action leading to a positive outcome there could be a number of confounding variables, that we have yet to control for adequately, washing out results. We do not thereby entertain the notion that the opposite effect is equally likely present but obscured by variance.

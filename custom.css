@@ -1,0 +1,67 @@
+h1 {
+  font-family: Open Sans;
+  color: #E66000;
+  font-weight: bold;
+  text-align: center;
+}
+
+h2 {
+    text-align: center;
+    color: ##E66000;
+    font-weight: bold;
+    font-family: Open Sans;
+}
+
+h3 {
+    font-family: Open Sans;
+    color: #00539F;
+}
+
+h4 {
+    text-align: justify;
+    color: ##666666;
+    font-family: Open Sans;
+}
+
+
+body  {
+   font-family: Helvetica;
+   font-size: 12pt;
+   background-color: white;
+   padding-top: 1em;
+   margin: auto;
+   max-width: 50em;
+   text-align: justify;
+}
+ 
+p {
+  padding: 0;
+  margin: 0;
+  margin-bottom: 2pt;
+}
+ 
+table{
+  margin: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  border: none;
+}
+
+blockquote {
+  background: #f9f9f9;
+  border-left: 10px solid #ccc;
+  margin: 1.5em 10px;
+  padding: 0.5em 10px;
+  quotes: "\201C""\201D""\2018""\2019";
+}
+blockquote:before {
+  color: #ccc;
+  content: open-quote;
+  font-size: 4em;
+  line-height: 0.1em;
+  margin-right: 0.25em;
+  vertical-align: -0.4em;
+}
+blockquote p {
+  display: inline;
+}
